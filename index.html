@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0a0a">
+  
+  <title>Dead Internet Ritual</title>
+  
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="stylesheet" href="css/mobile.css">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Canvas for visual effects -->
+    <canvas id="effects-canvas"></canvas>
+    
+    <!-- PHASE: GATHERING -->
+    <div id="gathering-state" class="content-layer">
+      <div class="welcome-message">
+        <h1>
+          <span class="welcome-greeting">WELCOME TO THE SEANCE</span>
+        </h1>
+      </div>
+      
+      <div class="connection-info">
+        <div class="connection-dot"></div>
+        <span><span class="participant-count">1</span> seeker(s) present</span>
+      </div>
+    </div>
+    
+    
+    <!-- PHASE: SUMMONING -->
+    <div id="summoning-state" class="ritual-animation hidden">
+      <div id="summoning-visual">
+        <!-- Visual effect will be rendered here -->
+      </div>
+      <p class="ritual-progress text-green pulse-glow">The ritual begins...</p>
+    </div>
+    
+    <!-- PHASE: MANIFESTED -->
+    <div id="manifested-state" class="content-layer hidden">
+      <div class="manifestation-message fade-in">
+        <h2 class="glitch" data-text="The Ghost Manifests">The Ghost Manifests</h2>
+        <p>Ask your question...</p>
+      </div>
+      
+      <div class="question-interface">
+        <form class="question-form" id="question-form">
+          <input 
+            type="text" 
+            id="question-input" 
+            placeholder="Ask the ghost..."
+            autocomplete="off"
+            maxlength="200"
+          >
+          <button type="submit" id="submit-question">Send Question</button>
+        </form>
+        
+        <div class="question-feed" id="question-feed">
+          <!-- Questions will appear here -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- PHASE: SPEAKING -->
+    <div id="speaking-state" class="content-layer hidden">
+      <div class="status-header">
+        <h2 class="status-title text-blue">The Ghost Speaks</h2>
+        <p class="status-message text-dim">Watch the vessel...</p>
+      </div>
+    </div>
+    
+    <!-- PHASE: FAILED RITUAL -->
+    <div id="failed-state" class="failed-ritual hidden">
+      <h2 class="text-red">You should not have come alone.</h2>
+      <p>The dead do not trust solitary seekers.</p>
+      <p class="text-xs text-dim" style="margin-top: 32px;">Returning to the darkness...</p>
+    </div>
+    
+    <!-- PHASE: REVELATION (Scratch-off) -->
+    <div id="revelation-state" class="content-layer hidden">
+      <div id="revelation-container">
+        <!-- Hidden message (revealed when scratched) -->
+        <div id="hidden-message">
+          <h2>Not just yet! For the real answer, please venmo @seance-exeperience-plus to begin your monthly trial.</h2>
+        </div>
+        
+        <!-- Scratch canvas -->
+        <canvas id="scratch-canvas"></canvas>
+        
+        <!-- Instruction -->
+        <div id="scratch-instruction">Swipe to uncover your answer...</div>
+      </div>
+    </div>
+    
+    <!-- PHASE: DISMISSED -->
+    <div id="dismissed-state" class="content-layer hidden">
+      <div class="dismissal-message">
+        <h2>The Ghost Fades</h2>
+        <p>Your lack of generosity will keep you blind.</p>
+      </div>
+    </div>
+  </div>
+  
+  <script src="js/firebase-config.js"></script>
+  <script src="js/visual-effects.js"></script>
+  <script src="js/mobile-app.js"></script>
+</body>
+</html>

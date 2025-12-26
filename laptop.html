@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0a">
+  
+  <title>Dead Internet Ritual - Ghost Vessel</title>
+  
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="stylesheet" href="css/laptop.css">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <div id="laptop-app">
+    <!-- Fire animation background -->
+    <canvas id="fireCanvas"></canvas>
+    
+    <!-- Smoke animation background -->
+    <canvas id="smokeCanvas"></canvas>
+    
+    <!-- IDLE STATE -->
+    <div id="idle-state" class="laptop-content">
+      <!-- Pure fire animation, no overlays -->
+    </div>
+    
+    <!-- MANIFESTATION STATE -->
+    <div id="manifestation-state" class="laptop-content hidden">
+      <!-- Smoke animation, no text -->
+    </div>
+    
+    <!-- MONOLOGUE STATE -->
+    <div id="monologue-state" class="laptop-content hidden">
+      <!-- Smoke animation, no text (audio track) -->
+    </div>
+    
+    <!-- LISTENING STATE -->
+    <div id="listening-state" class="laptop-content hidden">
+      <!-- Smoke animation, no text (audio track) -->
+    </div>
+    
+    <!-- REVELATION STATE (check your phones) -->
+    <div id="revelation-state" class="laptop-content hidden">
+      <div class="revelation-message">
+        <p class="revelation-text">Check your phones to find your answers</p>
+      </div>
+    </div>
+    
+    <!-- DISMISSAL STATE -->
+    <div id="dismissal-state" class="laptop-content hidden">
+      <!-- Smoke animation, no text (deferred styling) -->
+    </div>
+    
+    <!-- Fullscreen prompt -->
+    <div class="fullscreen-prompt" id="fullscreen-prompt">
+      Press F11 for fullscreen
+    </div>
+  </div>
+  
+  <script src="js/firebase-config.js"></script>
+  <script src="js/visual-effects.js"></script>
+  <script src="js/ghost-content.js"></script>
+  <script src="js/laptop-app.js"></script>
+</body>
+</html>

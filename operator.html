@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Operator Dashboard - Dead Internet Ritual</title>
+  
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="stylesheet" href="css/operator.css">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <div id="operator-dashboard">
+    <header class="dashboard-header">
+      <h1>Dead Internet Ritual - Operator Dashboard</h1>
+      <div class="session-info">
+        <span class="session-id">Session: <strong>ritual</strong></span>
+        <span class="connection-status">
+          <span class="status-dot"></span>
+          <span id="participant-count">0</span> participants
+        </span>
+      </div>
+    </header>
+
+    <div class="dashboard-grid">
+      <!-- State Control Panel -->
+      <section class="panel state-panel">
+        <h2>Ritual State Control</h2>
+        <div class="current-state">
+          <div class="state-label">Current State:</div>
+          <div class="state-value" id="current-state">GATHERING</div>
+        </div>
+        
+        <div class="state-controls">
+          <button id="btn-gathering-to-summoning" class="state-btn" data-from="gathering" data-to="summoning">
+            Begin Summoning
+          </button>
+          
+          <button id="btn-summoning-to-listening" class="state-btn" data-from="summoning" data-to="listening">
+            Begin Listening Phase
+          </button>
+          
+          <button id="btn-listening-to-revelation" class="state-btn" data-from="listening" data-to="revelation">
+            Reveal Truth
+          </button>
+          
+          <button id="btn-revelation-to-dismissal" class="state-btn" data-from="revelation" data-to="dismissal">
+            Final Message
+          </button>
+          
+          <button id="btn-dismissal-to-gathering" class="state-btn reset-btn" data-from="dismissal" data-to="gathering">
+            Return to Gathering
+          </button>
+        </div>
+
+        <div class="emergency-controls">
+          <button id="btn-emergency-reset" class="emergency-btn">
+            Emergency Reset
+          </button>
+        </div>
+      </section>
+
+      <!-- Participants Panel -->
+      <section class="panel participants-panel">
+        <h2>Participants</h2>
+        <div class="data-table">
+          <table id="participants-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Status</th>
+                <th>Ready</th>
+                <th>Question</th>
+              </tr>
+            </thead>
+            <tbody id="participants-tbody">
+              <tr class="empty-state">
+                <td colspan="5">Waiting for participants...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Questions Panel -->
+      <section class="panel questions-panel">
+        <h2>Questions <span id="question-count" class="count-badge">0</span></h2>
+        <div class="data-list" id="questions-list">
+          <div class="empty-state">No questions submitted yet...</div>
+        </div>
+      </section>
+
+      <!-- System Log -->
+      <section class="panel log-panel">
+        <h2>System Log</h2>
+        <div class="log-container" id="system-log">
+          <div class="log-entry">Dashboard initialized...</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/operator-app.js"></script>
+</body>
+</html>

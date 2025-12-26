@@ -1,0 +1,544 @@
+/* ═══════════════════════════════════════════════════════════════
+   DEAD INTERNET RITUAL - MOBILE INTERFACE STYLES
+   Phone interface: Scanning, summoning, communication
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ━━━ MOBILE VIEWPORT ━━━ */
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  position: fixed;
+  touch-action: manipulation; /* Prevent zoom on iOS */
+}
+
+/* ━━━ MAIN CONTAINER ━━━ */
+#app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ━━━ CANVAS BACKGROUND ━━━ */
+#effects-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ━━━ CONTENT LAYERS ━━━ */
+.content-layer {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+/* ━━━ STATUS HEADER ━━━ */
+.status-header {
+  text-align: center;
+  width: 100%;
+}
+
+.status-title {
+  font-size: var(--font-size-lg);
+  color: var(--primary-green);
+  margin-bottom: var(--space-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.status-message {
+  font-size: var(--font-size-sm);
+  color: var(--text-dim);
+  line-height: 1.8;
+}
+
+/* ━━━ CONNECTION INDICATOR ━━━ */
+.connection-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-dim);
+}
+
+.connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-green);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.participant-count {
+  font-weight: bold;
+  color: var(--primary-green);
+}
+
+/* ━━━ WELCOME MESSAGE ━━━ */
+.welcome-message {
+  text-align: center;
+  padding: 60px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.welcome-message h1 {
+  font-size: 32px;
+  line-height: 1.6;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.welcome-message h1 .welcome-greeting {
+  color: #ffffff;
+  display: block;
+  margin-bottom: 20px;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.welcome-message h1 .welcome-instruction {
+  color: var(--primary-green);
+  display: block;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+/* ━━━ SACRIFICE PHASE ━━━ */
+.sacrifice-status {
+  text-align: center;
+  margin: var(--space-xl) 0;
+}
+
+.sacrifice-count {
+  font-size: var(--font-size-xl);
+  color: var(--primary-green);
+  font-weight: bold;
+  margin-bottom: var(--space-sm);
+}
+
+.sacrifice-visual {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: var(--space-xl) 0;
+  min-height: 200px;
+}
+
+.sacrifice-icon {
+  font-size: 120px;
+  color: var(--primary-green);
+  text-shadow: 0 0 20px var(--primary-green);
+}
+
+.sacrifice-button-container {
+  text-align: center;
+  margin-top: var(--space-xl);
+}
+
+#sacrifice-button {
+  font-size: var(--font-size-lg);
+  padding: var(--space-md) var(--space-xl);
+  min-width: 250px;
+}
+
+.sacrifice-waiting {
+  margin-top: var(--space-sm);
+}
+
+/* ━━━ SACRIFICE FORM ━━━ */
+.sacrifice-form-container {
+  width: 100%;
+  max-width: 400px;
+  margin: var(--space-xl) 0;
+}
+
+#sacrifice-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+#sacrifice-input {
+  font-size: var(--font-size-lg);
+  padding: var(--space-md);
+  text-align: center;
+  min-height: 60px;
+}
+
+#submit-sacrifice {
+  font-size: var(--font-size-lg);
+  padding: var(--space-md) var(--space-xl);
+  min-width: 250px;
+}
+
+/* ━━━ RITUAL BUTTON ━━━ */
+.ritual-button-container {
+  margin-top: var(--space-xl);
+  text-align: center;
+}
+
+#summon-button {
+  font-size: var(--font-size-lg);
+  padding: var(--space-md) var(--space-xl);
+  min-width: 250px;
+}
+
+#summon-button.ready {
+  border-color: var(--primary-green);
+  color: var(--primary-green);
+  box-shadow: 0 0 10px var(--primary-green);
+}
+
+/* ━━━ RITUAL ANIMATION CONTAINER ━━━ */
+.ritual-animation {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100;
+  background: var(--bg-black);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.ritual-progress {
+  font-size: var(--font-size-sm);
+  color: var(--text-dim);
+  margin-top: var(--space-xl);
+}
+
+/* ━━━ MANIFESTATION STATE ━━━ */
+.manifestation-message {
+  text-align: center;
+  padding: var(--space-xl);
+}
+
+.manifestation-message h2 {
+  color: var(--primary-green);
+  margin-bottom: var(--space-md);
+  font-size: var(--font-size-xl);
+}
+
+.manifestation-message p {
+  color: var(--text-dim);
+  font-size: var(--font-size-sm);
+  line-height: 2;
+}
+
+/* ━━━ QUESTION INPUT INTERFACE ━━━ */
+.question-interface {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.question-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+#question-input {
+  font-size: var(--font-size-md);
+  padding: var(--space-md);
+  min-height: 60px;
+  resize: vertical;
+}
+
+#submit-question {
+  align-self: flex-end;
+}
+
+/* ━━━ QUESTION FEED ━━━ */
+.question-feed {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: var(--space-sm);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--text-darker);
+  border-radius: 4px;
+}
+
+.question-item {
+  font-size: var(--font-size-sm);
+  color: var(--text-dim);
+  margin-bottom: var(--space-xs);
+  padding: var(--space-xs);
+  border-left: 2px solid var(--primary-green);
+  padding-left: var(--space-sm);
+}
+
+.question-item:last-child {
+  margin-bottom: 0;
+}
+
+.question-text {
+  color: var(--text-white);
+}
+
+.question-meta {
+  font-size: var(--font-size-xs);
+  color: var(--text-darker);
+  margin-top: var(--space-xs);
+}
+
+/* ━━━ FAILED RITUAL ━━━ */
+.failed-ritual {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100;
+  background: var(--bg-black);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.failed-ritual h2 {
+  color: var(--danger-red);
+  font-size: var(--font-size-xl);
+  margin-bottom: var(--space-lg);
+  animation: glitch-text 0.5s infinite;
+}
+
+@keyframes glitch-text {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}
+
+.failed-ritual p {
+  color: var(--text-dim);
+  font-size: var(--font-size-md);
+  line-height: 2;
+}
+
+/* ━━━ DISMISSAL STATE ━━━ */
+.dismissal-message {
+  text-align: center;
+  padding: var(--space-xl);
+  animation: fade-out 30s ease-out;
+}
+
+@keyframes fade-out {
+  0% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.dismissal-message h2 {
+  color: var(--primary-blue);
+  margin-bottom: var(--space-md);
+  font-size: var(--font-size-xl);
+}
+
+.dismissal-message p {
+  color: var(--text-dim);
+  font-size: var(--font-size-sm);
+}
+
+/* ━━━ SCROLLBAR STYLING ━━━ */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-darker);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-darker);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+
+/* ━━━ RESPONSIVE ADJUSTMENTS ━━━ */
+@media (max-width: 375px) {
+  .status-title {
+    font-size: var(--font-size-md);
+  }
+  
+  .welcome-message h1 {
+    font-size: 24px;
+  }
+  
+  #summon-button {
+    font-size: var(--font-size-md);
+    min-width: 200px;
+  }
+}
+
+@media (max-height: 600px) {
+  #app {
+    padding: var(--space-md);
+  }
+  
+  .welcome-message {
+    padding: 40px 20px;
+    min-height: 50vh;
+  }
+  
+  .welcome-message h1 {
+    font-size: 28px;
+  }
+}
+
+/* ━━━ SAFE AREA INSETS (iOS) ━━━ */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
+/* ━━━ RESET BUTTON ━━━ */
+.reset-button {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid var(--text-darker);
+  color: var(--text-dim);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  backdrop-filter: blur(10px);
+}
+
+.reset-button:hover,
+.reset-button:active {
+  background: rgba(255, 0, 0, 0.2);
+  border-color: var(--danger-red);
+  color: var(--danger-red);
+  transform: rotate(180deg);
+}
+
+.reset-button:active {
+  transform: rotate(180deg) scale(0.95);
+}
+
+/* ━━━ REVELATION STATE (SCRATCH-OFF) ━━━ */
+#revelation-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #ffffff;
+}
+
+#hidden-message {
+  position: absolute;
+  z-index: 1;
+  text-align: center;
+  padding: 40px;
+  max-width: 90%;
+}
+
+#hidden-message h2 {
+  font-size: 28px;
+  color: #0a0a0a;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  opacity: 1;
+  font-family: var(--font-mono);
+}
+
+#scratch-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  cursor: grab;
+  transition: opacity 1s ease-out;
+}
+
+#scratch-canvas.fading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#scratch-instruction {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  font-size: 16px;
+  color: #888;
+  text-align: center;
+  pointer-events: none;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  #hidden-message h2 {
+    font-size: 22px;
+  }
+}
