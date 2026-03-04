@@ -64,7 +64,7 @@ class RitualSession {
       if (!snapshot.exists()) {
         // New session - initialize
         await this.sessionRef.set({
-          state: 'part1',
+          state: 'idle',
           ritualStarted: false,
           created: firebase.database.ServerValue.TIMESTAMP,
           participantCount: 0
@@ -146,7 +146,7 @@ class RitualSession {
   async resetRitual() {
     try {
       await this.sessionRef.update({
-        state: 'part1',
+        state: 'idle',
         ritualStarted: false
       });
       console.log('🔄 Ritual reset and unlocked');

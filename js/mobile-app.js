@@ -54,10 +54,34 @@ class MobileApp {
     // Setup Firebase listeners
     this.setupFirebaseListeners();
     
-    // Start in gathering state
-    this.setState(AppState.GATHERING);
+    // Hide all states first, show entry overlay
+    document.getElementById('gathering-state').classList.add('hidden');
+    document.getElementById('sacrifice-state').classList.add('hidden');
+    document.getElementById('summoning-state').classList.add('hidden');
+    document.getElementById('manifested-state').classList.add('hidden');
+    document.getElementById('speaking-state').classList.add('hidden');
+    document.getElementById('failed-state').classList.add('hidden');
+    document.getElementById('revelation-state').classList.add('hidden');
+    document.getElementById('dismissed-state').classList.add('hidden');
     
-    // Readiness is now triggered when completing the sacrifice phase
+    // Wait for user to explicitly join
+    const joinBtn = document.getElementById('btn-begin-connection');
+    if (joinBtn) {
+      joinBtn.addEventListener('click', () => {
+        document.getElementById('entry-overlay').classList.add('hidden');
+        this.unlockAudio();
+        
+        // Sync to current firebase state immediately
+        this.session.sessionRef.child('state').once('value').then(snapshot => {
+          const state = snapshot.val();
+          if (state) {
+            this.handleStateSync(state);
+          } else {
+            this.setState(AppState.GATHERING);
+          }
+        });
+      });
+    }
   }
   
   setupFirebaseListeners() {
@@ -117,71 +141,33 @@ class MobileApp {
     const targetAudioId = `audio-${partStr}`;
     const targetAudio = document.getElementById(targetAudioId);
     
-    // Stop all other audio elements immediately
+    // Hard stop ALL audio elements to prevent weird overlaps or skipping bugs
     const parts = ['part1', 'part2', 'part3', 'part4', 'part5'];
     parts.forEach(part => {
       const audioId = `audio-${part}`;
       const audio = document.getElementById(audioId);
-      if (audio && audioId !== targetAudioId && !audio.paused) {
-        this.fadeAudioOut(audio);
+      if (audio && audioId !== targetAudioId) {
+        if (audio.fadeInterval) clearInterval(audio.fadeInterval);
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = 0;
       }
     });
     
-    // Play target audio if not already playing
-    if (targetAudio && targetAudio.paused) {
-      targetAudio.volume = 0; // start at 0 for fade in
-      targetAudio.currentTime = 0; // ensure it plays from the beginning
+    // Play target audio
+    if (targetAudio) {
+      if (targetAudio.fadeInterval) clearInterval(targetAudio.fadeInterval);
+      targetAudio.pause(); // Reset completely
+      targetAudio.currentTime = 0;
+      targetAudio.volume = 1.0; // Play at full volume immediately (no fade in logic to get stuck)
+      
       const playPromise = targetAudio.play();
       if (playPromise !== undefined) {
-        playPromise.then(() => {
-          this.fadeAudioIn(targetAudio);
-        }).catch(error => {
+        playPromise.catch(error => {
           console.warn("Audio play prevented:", error);
-          // Audio requires user interaction to play
         });
       }
     }
-  }
-  
-  fadeAudioOut(audioElement) {
-    // Clear any existing fade intervals to prevent fighting
-    if (audioElement.fadeInterval) clearInterval(audioElement.fadeInterval);
-    
-    audioElement.fadeInterval = setInterval(() => {
-      if ((audioElement.volume - 0.1) > 0.0) {
-        audioElement.volume -= 0.1;
-      } else {
-        clearInterval(audioElement.fadeInterval);
-        audioElement.volume = 0.0;
-        audioElement.pause();
-        audioElement.currentTime = 0;
-      }
-    }, 50); // fast fade out
-  }
-  
-  fadeAudioIn(audioElement) {
-    // Clear any existing fade intervals
-    if (audioElement.fadeInterval) clearInterval(audioElement.fadeInterval);
-    
-    audioElement.fadeInterval = setInterval(() => {
-      if ((audioElement.volume + 0.1) < 1.0) {
-        audioElement.volume += 0.1;
-      } else {
-        clearInterval(audioElement.fadeInterval);
-        audioElement.volume = 1.0;
-      }
-    }, 100);
-  }
-  
-  fadeAudioIn(audioElement) {
-    const fadePoint = setInterval(() => {
-      if ((audioElement.volume + 0.1) <= 1.0) {
-        audioElement.volume += 0.1;
-      } else {
-        clearInterval(fadePoint);
-        audioElement.volume = 1.0;
-      }
-    }, 200);
   }
   
   setupEventListeners() {
@@ -303,21 +289,6 @@ class MobileApp {
       case AppState.GATHERING:
         document.getElementById('gathering-state').classList.remove('hidden');
         this.matrixRain.start();
-        
-        // Unlock audio on first touch and play current part's audio
-        const unlockAndPlay = () => {
-          this.unlockAudio();
-          // Check firebase state directly to play correct audio upon late join
-          this.session.sessionRef.child('state').once('value').then(snapshot => {
-            const state = snapshot.val();
-            if (state && state.startsWith('part')) {
-              this.playAudioForPart(state);
-            }
-          });
-        };
-        
-        document.addEventListener('touchstart', unlockAndPlay, { once: true });
-        document.addEventListener('click', unlockAndPlay, { once: true });
         break;
         
       case AppState.SACRIFICE:
