@@ -64,6 +64,9 @@ class MobileApp {
     document.getElementById('revelation-state').classList.add('hidden');
     document.getElementById('dismissed-state').classList.add('hidden');
     
+    // Start background digital rain immediately so it's visible behind overlay
+    this.matrixRain.start();
+    
     // Wait for user to explicitly join
     const joinBtn = document.getElementById('btn-begin-connection');
     if (joinBtn) {
@@ -290,12 +293,14 @@ class MobileApp {
     switch (newState) {
       case AppState.GATHERING:
         document.getElementById('gathering-state').classList.remove('hidden');
-        this.matrixRain.start();
+        // Ensure rain is running
+        if (!this.matrixRain.isRunning) this.matrixRain.start();
         break;
         
       case AppState.SACRIFICE:
         document.getElementById('sacrifice-state').classList.remove('hidden');
-        this.matrixRain.start(); // Keep matrix rain in background
+        // Ensure rain is running
+        if (!this.matrixRain.isRunning) this.matrixRain.start();
         this.initDrawingCanvas();
         break;
         

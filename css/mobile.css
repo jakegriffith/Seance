@@ -57,7 +57,8 @@ html, body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: #0a0a0a;
+  background: rgba(0, 10, 0, 0.85); /* Transparent to show matrix rain */
+  backdrop-filter: blur(2px);
   z-index: 100; /* Must be above canvas to catch click */
   display: flex;
   justify-content: center;
