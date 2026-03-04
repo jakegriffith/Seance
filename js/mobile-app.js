@@ -141,32 +141,34 @@ class MobileApp {
     const targetAudioId = `audio-${partStr}`;
     const targetAudio = document.getElementById(targetAudioId);
     
-    // Hard stop ALL audio elements to prevent weird overlaps or skipping bugs
-    const parts = ['part1', 'part2', 'part3', 'part4', 'part5'];
-    parts.forEach(part => {
-      const audioId = `audio-${part}`;
-      const audio = document.getElementById(audioId);
-      if (audio && audioId !== targetAudioId) {
-        if (audio.fadeInterval) clearInterval(audio.fadeInterval);
-        audio.pause();
-        audio.currentTime = 0;
-        audio.volume = 0;
-      }
+    // Brutally stop ALL audio elements on the page first
+    const allAudios = document.querySelectorAll('audio');
+    allAudios.forEach(audio => {
+      if (audio.fadeInterval) clearInterval(audio.fadeInterval);
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = 0;
+      // Remove any leftover src so browsers don't try to buffer/play them invisibly
+      audio.removeAttribute('autoplay');
     });
     
-    // Play target audio
+    // If the target audio exists, set it up and play it exclusively
     if (targetAudio) {
-      if (targetAudio.fadeInterval) clearInterval(targetAudio.fadeInterval);
-      targetAudio.pause(); // Reset completely
+      console.log(`🔊 Playing audio for: ${partStr}`);
+      targetAudio.volume = 1.0;
       targetAudio.currentTime = 0;
-      targetAudio.volume = 1.0; // Play at full volume immediately (no fade in logic to get stuck)
       
-      const playPromise = targetAudio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.warn("Audio play prevented:", error);
-        });
-      }
+      // Some browsers require a slight delay to process the pause() commands above
+      setTimeout(() => {
+        const playPromise = targetAudio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.warn(`Audio play prevented for ${partStr}:`, error);
+          });
+        }
+      }, 50);
+    } else {
+      console.warn(`⚠️ Target audio element not found: ${targetAudioId}`);
     }
   }
   
