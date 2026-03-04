@@ -99,11 +99,12 @@ html, body {
 }
 
 .qr-title {
-  color: var(--primary-green);
-  font-size: 48px;
+  color: #ffffff;
+  font-size: 56px;
   text-transform: uppercase;
-  letter-spacing: 0.15em;
-  text-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+  letter-spacing: 0.05em;
+  font-family: "Arial Black", "Impact", "Helvetica Neue", sans-serif;
+  font-weight: 900;
   margin: 0;
   white-space: nowrap;
 }
@@ -112,10 +113,8 @@ html, body {
   width: 300px;
   height: 300px;
   border-radius: 10px;
-  border: 2px solid var(--primary-green);
-  box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
-  background: rgba(0, 10, 0, 0.8);
-  padding: 15px;
+  background: transparent;
+  padding: 0;
 }
 
 #qr-code-overlay.hidden {
@@ -126,15 +125,12 @@ html, body {
 @keyframes hover-float {
   0% {
     transform: translateX(-50%) translateY(0px);
-    box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
   }
   50% {
     transform: translateX(-50%) translateY(-20px);
-    box-shadow: 0 0 50px rgba(0, 255, 136, 0.7);
   }
   100% {
     transform: translateX(-50%) translateY(0px);
-    box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
   }
 }
 
