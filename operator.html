@@ -35,24 +35,28 @@
         </div>
         
         <div class="state-controls">
-          <button id="btn-gathering-to-summoning" class="state-btn" data-from="gathering" data-to="summoning">
-            Begin Summoning
+          <button id="btn-to-part1" class="state-btn" data-from="dismissal" data-to="part1">
+            Start Part 1 (Gathering)
           </button>
           
-          <button id="btn-summoning-to-listening" class="state-btn" data-from="summoning" data-to="listening">
-            Begin Listening Phase
+          <button id="btn-part1-to-part2" class="state-btn" data-from="part1" data-to="part2">
+            Start Part 2 (Sacrifice)
           </button>
           
-          <button id="btn-listening-to-revelation" class="state-btn" data-from="listening" data-to="revelation">
-            Reveal Truth
+          <button id="btn-part2-to-part3" class="state-btn" data-from="part2" data-to="part3">
+            Start Part 3 (Summoning)
           </button>
           
-          <button id="btn-revelation-to-dismissal" class="state-btn" data-from="revelation" data-to="dismissal">
-            Final Message
+          <button id="btn-part3-to-part4" class="state-btn" data-from="part3" data-to="part4">
+            Start Part 4 (Listening)
           </button>
           
-          <button id="btn-dismissal-to-gathering" class="state-btn reset-btn" data-from="dismissal" data-to="gathering">
-            Return to Gathering
+          <button id="btn-part4-to-part5" class="state-btn" data-from="part4" data-to="part5">
+            Start Part 5 (Revelation)
+          </button>
+          
+          <button id="btn-part5-to-part1" class="state-btn reset-btn" data-from="part5" data-to="part1">
+            Return to Part 1 (Reset)
           </button>
         </div>
 

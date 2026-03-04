@@ -6,6 +6,7 @@
 // ━━━ APP STATE ━━━
 const AppState = {
   GATHERING: 'gathering',
+  SACRIFICE: 'sacrifice',
   SUMMONING: 'summoning',
   LISTENING: 'listening',      // Ghost listens for questions
   REVELATION: 'revelation',    // Scratch-off reveal
@@ -56,8 +57,7 @@ class MobileApp {
     // Start in gathering state
     this.setState(AppState.GATHERING);
     
-    // Mark user as ready immediately (no orientation permission needed)
-    await this.session.setReady();
+    // Readiness is now triggered when completing the sacrifice phase
   }
   
   setupFirebaseListeners() {
@@ -81,11 +81,17 @@ class MobileApp {
   handleStateSync(firebaseState) {
     // Map Firebase states to app states
     const stateMap = {
-      'gathering': AppState.GATHERING,
+      'part1': AppState.GATHERING,
+      'part2': AppState.SACRIFICE,
+      'part3': AppState.SUMMONING,
+      'part4': AppState.LISTENING,
+      'part5': AppState.REVELATION,
+      'gathering': AppState.GATHERING, // Fallbacks
+      'sacrifice': AppState.SACRIFICE,
       'summoning': AppState.SUMMONING,
-      'monologue': AppState.SUMMONING,  // Keep showing ritual animation during monologue
+      'monologue': AppState.SUMMONING,
       'listening': AppState.LISTENING,
-      'revelation': AppState.REVELATION,  // Scratch-off reveal
+      'revelation': AppState.REVELATION,
       'manifested': AppState.MANIFESTED,
       'speaking': AppState.SPEAKING,
       'failed': AppState.FAILED,
@@ -95,10 +101,87 @@ class MobileApp {
     
     const newState = stateMap[firebaseState] || AppState.GATHERING;
     
+    // Sync audio based on Firebase state
+    if (firebaseState.startsWith('part')) {
+      this.playAudioForPart(firebaseState);
+    }
+    
     // Only update if different
     if (this.currentState !== newState) {
       this.setState(newState);
     }
+  }
+  
+  playAudioForPart(partStr) {
+    // Determine target audio element based on "partX" string
+    const targetAudioId = `audio-${partStr}`;
+    const targetAudio = document.getElementById(targetAudioId);
+    
+    // Stop all other audio elements immediately
+    const parts = ['part1', 'part2', 'part3', 'part4', 'part5'];
+    parts.forEach(part => {
+      const audioId = `audio-${part}`;
+      const audio = document.getElementById(audioId);
+      if (audio && audioId !== targetAudioId && !audio.paused) {
+        this.fadeAudioOut(audio);
+      }
+    });
+    
+    // Play target audio if not already playing
+    if (targetAudio && targetAudio.paused) {
+      targetAudio.volume = 0; // start at 0 for fade in
+      targetAudio.currentTime = 0; // ensure it plays from the beginning
+      const playPromise = targetAudio.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          this.fadeAudioIn(targetAudio);
+        }).catch(error => {
+          console.warn("Audio play prevented:", error);
+          // Audio requires user interaction to play
+        });
+      }
+    }
+  }
+  
+  fadeAudioOut(audioElement) {
+    // Clear any existing fade intervals to prevent fighting
+    if (audioElement.fadeInterval) clearInterval(audioElement.fadeInterval);
+    
+    audioElement.fadeInterval = setInterval(() => {
+      if ((audioElement.volume - 0.1) > 0.0) {
+        audioElement.volume -= 0.1;
+      } else {
+        clearInterval(audioElement.fadeInterval);
+        audioElement.volume = 0.0;
+        audioElement.pause();
+        audioElement.currentTime = 0;
+      }
+    }, 50); // fast fade out
+  }
+  
+  fadeAudioIn(audioElement) {
+    // Clear any existing fade intervals
+    if (audioElement.fadeInterval) clearInterval(audioElement.fadeInterval);
+    
+    audioElement.fadeInterval = setInterval(() => {
+      if ((audioElement.volume + 0.1) < 1.0) {
+        audioElement.volume += 0.1;
+      } else {
+        clearInterval(audioElement.fadeInterval);
+        audioElement.volume = 1.0;
+      }
+    }, 100);
+  }
+  
+  fadeAudioIn(audioElement) {
+    const fadePoint = setInterval(() => {
+      if ((audioElement.volume + 0.1) <= 1.0) {
+        audioElement.volume += 0.1;
+      } else {
+        clearInterval(fadePoint);
+        audioElement.volume = 1.0;
+      }
+    }, 200);
   }
   
   setupEventListeners() {
@@ -207,6 +290,7 @@ class MobileApp {
     
     // Hide all state containers
     document.getElementById('gathering-state').classList.add('hidden');
+    document.getElementById('sacrifice-state').classList.add('hidden');
     document.getElementById('summoning-state').classList.add('hidden');
     document.getElementById('manifested-state').classList.add('hidden');
     document.getElementById('speaking-state').classList.add('hidden');
@@ -220,9 +304,26 @@ class MobileApp {
         document.getElementById('gathering-state').classList.remove('hidden');
         this.matrixRain.start();
         
-        // Unlock audio on first touch
-        document.addEventListener('touchstart', () => this.unlockAudio(), { once: true });
-        document.addEventListener('click', () => this.unlockAudio(), { once: true });
+        // Unlock audio on first touch and play current part's audio
+        const unlockAndPlay = () => {
+          this.unlockAudio();
+          // Check firebase state directly to play correct audio upon late join
+          this.session.sessionRef.child('state').once('value').then(snapshot => {
+            const state = snapshot.val();
+            if (state && state.startsWith('part')) {
+              this.playAudioForPart(state);
+            }
+          });
+        };
+        
+        document.addEventListener('touchstart', unlockAndPlay, { once: true });
+        document.addEventListener('click', unlockAndPlay, { once: true });
+        break;
+        
+      case AppState.SACRIFICE:
+        document.getElementById('sacrifice-state').classList.remove('hidden');
+        this.matrixRain.start(); // Keep matrix rain in background
+        this.initDrawingCanvas();
         break;
         
       case AppState.SUMMONING:
@@ -271,6 +372,36 @@ class MobileApp {
         document.getElementById('dismissed-state').classList.remove('hidden');
         this.handleDismissed();
         break;
+    }
+  }
+  
+  initDrawingCanvas() {
+    if (!this.drawingCanvas) {
+      this.drawingCanvas = new DrawingCanvas('drawing-canvas');
+      
+      const submitBtn = document.getElementById('submit-sacrifice');
+      if (submitBtn) {
+        submitBtn.addEventListener('click', async () => {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Throwing...';
+          
+          // Capture the user's drawing as base64 image data
+          const canvas = document.getElementById('drawing-canvas');
+          if (canvas) {
+            const imageData = canvas.toDataURL('image/png');
+            // Send the image to Firebase for the laptop to pick up
+            await this.session.submitSacrificeImage(imageData);
+          }
+          
+          // Start the fire animation overtaking the drawing locally
+          this.drawingCanvas.startFireAnimation();
+          
+          await this.session.setReady();
+          submitBtn.textContent = 'Awaiting others...';
+        });
+      }
+    } else {
+      this.drawingCanvas.resizeCanvas();
     }
   }
   
@@ -583,6 +714,180 @@ class ScratchOffCanvas {
       const instruction = document.getElementById('scratch-instruction');
       if (instruction) instruction.style.display = 'none';
     }
+  }
+}
+
+// ━━━ DRAWING CANVAS CLASS ━━━
+class DrawingCanvas {
+  constructor(canvasId) {
+    this.canvas = document.getElementById(canvasId);
+    this.ctx = this.canvas.getContext('2d');
+    
+    this.isDrawing = false;
+    this.isBurning = false;
+    this.lastX = 0;
+    this.lastY = 0;
+    
+    this.particles = [];
+    this.fireHeight = 0; // The height level of the fire rising from the bottom
+    this.maxFireHeight = 0;
+    
+    this.init();
+  }
+  
+  init() {
+    this.resizeCanvas();
+    window.addEventListener('resize', () => this.resizeCanvas());
+    
+    this.applyCanvasStyles();
+    this.setupEventListeners();
+  }
+  
+  applyCanvasStyles() {
+    this.ctx.strokeStyle = '#00ff88'; // Matrix neon green
+    this.ctx.lineWidth = 4;
+    this.ctx.lineCap = 'round';
+    this.ctx.lineJoin = 'round';
+    this.ctx.shadowBlur = 10;
+    this.ctx.shadowColor = '#00ff88';
+  }
+  
+  resizeCanvas() {
+    const rect = this.canvas.parentElement.getBoundingClientRect();
+    this.canvas.width = rect.width;
+    this.canvas.height = rect.height;
+    this.maxFireHeight = rect.height;
+    
+    this.applyCanvasStyles();
+  }
+  
+  setupEventListeners() {
+    // Mouse events
+    this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
+    this.canvas.addEventListener('mousemove', (e) => this.draw(e));
+    this.canvas.addEventListener('mouseup', () => this.stopDrawing());
+    this.canvas.addEventListener('mouseout', () => this.stopDrawing());
+    
+    // Touch events
+    this.canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault(); // Prevent scrolling
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent('mousedown', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      });
+      this.startDrawing(mouseEvent);
+    });
+    
+    this.canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault(); // Prevent scrolling
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent('mousemove', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      });
+      this.draw(mouseEvent);
+    });
+    
+    this.canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      this.stopDrawing();
+    });
+  }
+  
+  startDrawing(e) {
+    if (this.isBurning) return; // Prevent drawing if fire started
+    this.isDrawing = true;
+    const rect = this.canvas.getBoundingClientRect();
+    this.lastX = e.clientX - rect.left;
+    this.lastY = e.clientY - rect.top;
+  }
+  
+  draw(e) {
+    if (!this.isDrawing || this.isBurning) return;
+    
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.lastX, this.lastY);
+    this.ctx.lineTo(x, y);
+    this.ctx.stroke();
+    
+    this.lastX = x;
+    this.lastY = y;
+  }
+  
+  stopDrawing() {
+    this.isDrawing = false;
+  }
+  
+  startFireAnimation() {
+    this.isBurning = true;
+    
+    // Setup Reverse Digital Rain
+    this.charset = 'abcdefghijklmnopqrstuvwxyz0123456789$+-*/=%""\'#&_(),.;:?!\\|{}<>[]^~ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    this.fontSize = 16;
+    this.columns = this.canvas.width / this.fontSize;
+    this.drops = [];
+    this.glowIntensity = [];
+    
+    // Initialize drops at the very bottom, slightly staggered
+    for (let x = 0; x < this.columns; x++) {
+      this.drops[x] = this.canvas.height + Math.random() * 100;
+      this.glowIntensity[x] = Math.random();
+    }
+    
+    this.animateReverseRain();
+  }
+  
+  animateReverseRain() {
+    if (!this.isBurning) return;
+    
+    // Draw translucent dark background to gradually hide the drawing and create trails
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    this.ctx.font = this.fontSize + 'px monospace';
+    
+    // Draw the characters
+    for (let i = 0; i < this.drops.length; i++) {
+      // Select a random character
+      const text = this.charset[Math.floor(Math.random() * this.charset.length)];
+      
+      // Flicker the glow intensity
+      this.glowIntensity[i] += (Math.random() - 0.5) * 0.2;
+      if (this.glowIntensity[i] < 0.2) this.glowIntensity[i] = 0.2;
+      if (this.glowIntensity[i] > 1) this.glowIntensity[i] = 1;
+      
+      // Green matrix-fire color
+      this.ctx.fillStyle = `rgba(0, 255, 136, ${this.glowIntensity[i]})`;
+      
+      // Optional: Add some white/brighter green at the "head" of the drop
+      if (Math.random() > 0.9) {
+        this.ctx.fillStyle = '#ffffff';
+      }
+      
+      // Remove heavy shadowBlur during rendering text to keep it performant
+      this.ctx.shadowBlur = 0; 
+      
+      // Draw the character
+      // x coordinate is column * font size
+      // y coordinate is the current drop height
+      this.ctx.fillText(text, i * this.fontSize, this.drops[i]);
+      
+      // Move drop UPwards
+      // Randomize speed slightly for "flame" effect
+      this.drops[i] -= this.fontSize * (0.5 + Math.random() * 0.5);
+      
+      // If drop reaches top, occasionally reset it to the bottom to keep the fire going
+      if (this.drops[i] < 0 && Math.random() > 0.95) {
+        this.drops[i] = this.canvas.height;
+      }
+    }
+    
+    requestAnimationFrame(() => this.animateReverseRain());
   }
 }
 

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Sacrifice Canvas Test</title>
+  
+  <link rel="stylesheet" href="css/shared.css">
+  <link rel="stylesheet" href="css/mobile.css">
+  
+  <style>
+    /* Add some specific overrides for testing */
+    body {
+      background-color: #0a0a0a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      color: white;
+    }
+    
+    #app {
+      padding: 0;
+      width: 100%;
+      height: 100%;
+    }
+    
+    .content-layer {
+      display: flex; /* force display for testing */
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app">
+    <!-- PHASE: SACRIFICE (Visible for testing) -->
+    <div id="sacrifice-state" class="content-layer">
+      <div class="sacrifice-container">
+        <h2 class="sacrifice-prompt">Draw something that connects you to someone you love</h2>
+        <div class="canvas-wrapper">
+          <canvas id="drawing-canvas"></canvas>
+        </div>
+        <button id="submit-sacrifice" class="sacrifice-btn">Throw it into the fire</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ━━━ DRAWING CANVAS CLASS ━━━
+    class DrawingCanvas {
+      constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        
+        this.isDrawing = false;
+        this.isBurning = false;
+        this.lastX = 0;
+        this.lastY = 0;
+        
+        this.particles = [];
+        this.fireHeight = 0; // The height level of the fire rising from the bottom
+        this.maxFireHeight = 0;
+        
+        this.init();
+      }
+      
+      init() {
+        this.resizeCanvas();
+        window.addEventListener('resize', () => this.resizeCanvas());
+        
+        this.applyCanvasStyles();
+        this.setupEventListeners();
+      }
+      
+      applyCanvasStyles() {
+        this.ctx.strokeStyle = '#00ff88'; // Matrix neon green
+        this.ctx.lineWidth = 4;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowColor = '#00ff88';
+      }
+      
+      resizeCanvas() {
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        this.canvas.width = rect.width;
+        this.canvas.height = rect.height;
+        this.maxFireHeight = rect.height;
+        
+        this.applyCanvasStyles();
+      }
+      
+      setupEventListeners() {
+        // Mouse events
+        this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
+        this.canvas.addEventListener('mousemove', (e) => this.draw(e));
+        this.canvas.addEventListener('mouseup', () => this.stopDrawing());
+        this.canvas.addEventListener('mouseout', () => this.stopDrawing());
+        
+        // Touch events
+        this.canvas.addEventListener('touchstart', (e) => {
+          e.preventDefault(); // Prevent scrolling
+          const touch = e.touches[0];
+          const mouseEvent = new MouseEvent('mousedown', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+          });
+          this.startDrawing(mouseEvent);
+        });
+        
+        this.canvas.addEventListener('touchmove', (e) => {
+          e.preventDefault(); // Prevent scrolling
+          const touch = e.touches[0];
+          const mouseEvent = new MouseEvent('mousemove', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+          });
+          this.draw(mouseEvent);
+        });
+        
+        this.canvas.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          this.stopDrawing();
+        });
+      }
+      
+      startDrawing(e) {
+        if (this.isBurning) return; // Prevent drawing if fire started
+        this.isDrawing = true;
+        const rect = this.canvas.getBoundingClientRect();
+        this.lastX = e.clientX - rect.left;
+        this.lastY = e.clientY - rect.top;
+      }
+      
+      draw(e) {
+        if (!this.isDrawing || this.isBurning) return;
+        
+        const rect = this.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.lastX, this.lastY);
+        this.ctx.lineTo(x, y);
+        this.ctx.stroke();
+        
+        this.lastX = x;
+        this.lastY = y;
+      }
+      
+      stopDrawing() {
+        this.isDrawing = false;
+      }
+      
+      startFireAnimation() {
+        this.isBurning = true;
+        
+        // Setup Reverse Digital Rain
+        this.charset = 'abcdefghijklmnopqrstuvwxyz0123456789$+-*/=%""\'#&_(),.;:?!\\|{}<>[]^~ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        this.fontSize = 16;
+        this.columns = this.canvas.width / this.fontSize;
+        this.drops = [];
+        this.glowIntensity = [];
+        
+        // Initialize drops at the very bottom, slightly staggered
+        for (let x = 0; x < this.columns; x++) {
+          this.drops[x] = this.canvas.height + Math.random() * 100;
+          this.glowIntensity[x] = Math.random();
+        }
+        
+        this.animateReverseRain();
+      }
+      
+      animateReverseRain() {
+        if (!this.isBurning) return;
+        
+        // Draw translucent dark background to gradually hide the drawing and create trails
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.ctx.font = this.fontSize + 'px monospace';
+        
+        // Draw the characters
+        for (let i = 0; i < this.drops.length; i++) {
+          // Select a random character
+          const text = this.charset[Math.floor(Math.random() * this.charset.length)];
+          
+          // Flicker the glow intensity
+          this.glowIntensity[i] += (Math.random() - 0.5) * 0.2;
+          if (this.glowIntensity[i] < 0.2) this.glowIntensity[i] = 0.2;
+          if (this.glowIntensity[i] > 1) this.glowIntensity[i] = 1;
+          
+          // Green matrix-fire color
+          this.ctx.fillStyle = `rgba(0, 255, 136, ${this.glowIntensity[i]})`;
+          
+          // Optional: Add some white/brighter green at the "head" of the drop
+          if (Math.random() > 0.9) {
+            this.ctx.fillStyle = '#ffffff';
+          }
+          
+          // Remove heavy shadowBlur during rendering text to keep it performant
+          this.ctx.shadowBlur = 0; 
+          
+          // Draw the character
+          // x coordinate is column * font size
+          // y coordinate is the current drop height
+          this.ctx.fillText(text, i * this.fontSize, this.drops[i]);
+          
+          // Move drop UPwards
+          // Randomize speed slightly for "flame" effect
+          this.drops[i] -= this.fontSize * (0.5 + Math.random() * 0.5);
+          
+          // If drop reaches top, occasionally reset it to the bottom to keep the fire going
+          if (this.drops[i] < 0 && Math.random() > 0.95) {
+            this.drops[i] = this.canvas.height;
+          }
+        }
+        
+        requestAnimationFrame(() => this.animateReverseRain());
+      }
+    }
+
+    // Initialize the canvas and button logic when the DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = new DrawingCanvas('drawing-canvas');
+      
+      const submitBtn = document.getElementById('submit-sacrifice');
+      if (submitBtn) {
+        submitBtn.addEventListener('click', () => {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Throwing...';
+          
+          // Start the fire animation overtaking the drawing
+          canvas.startFireAnimation();
+          
+          // Simulate the delay for the Firebase request
+          setTimeout(() => {
+            submitBtn.textContent = 'Awaiting others...';
+          }, 1000);
+        });
+      }
+    });
+  </script>
+</body>
+</html>

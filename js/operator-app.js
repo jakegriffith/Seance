@@ -5,7 +5,7 @@
 
 class OperatorDashboard {
   constructor() {
-    this.currentState = 'gathering';
+    this.currentState = 'part1';
     this.participants = {};
     this.questions = {};
     
@@ -117,7 +117,7 @@ class OperatorDashboard {
       
       // Reinitialize the session with clean state
       await this.session.sessionRef.set({
-        state: 'gathering',
+        state: 'part1',
         ritualStarted: false,
         created: firebase.database.ServerValue.TIMESTAMP,
         participantCount: 0

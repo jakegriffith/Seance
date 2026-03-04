@@ -34,7 +34,17 @@
         <span><span class="participant-count">1</span> seeker(s) present</span>
       </div>
     </div>
-    
+
+    <!-- PHASE: SACRIFICE -->
+    <div id="sacrifice-state" class="content-layer hidden">
+      <div class="sacrifice-container">
+        <h2 class="sacrifice-prompt">Draw something that connects you to someone you love</h2>
+        <div class="canvas-wrapper">
+          <canvas id="drawing-canvas"></canvas>
+        </div>
+        <button id="submit-sacrifice" class="sacrifice-btn">Throw it into the fire</button>
+      </div>
+    </div>
     
     <!-- PHASE: SUMMONING -->
     <div id="summoning-state" class="ritual-animation hidden">
@@ -108,6 +118,13 @@
       </div>
     </div>
   </div>
+  
+  <!-- Audio Elements for Parts 1-5 -->
+  <audio id="audio-part1" src="S - Part 1.wav" preload="auto"></audio>
+  <audio id="audio-part2" src="S - Part 2.wav" preload="auto"></audio>
+  <audio id="audio-part3" src="S - Part 3.wav" preload="auto"></audio>
+  <audio id="audio-part4" src="S - Part 4.wav" preload="auto"></audio>
+  <audio id="audio-part5" src="s-part5.wav" preload="auto"></audio>
   
   <script src="js/firebase-config.js"></script>
   <script src="js/visual-effects.js"></script>

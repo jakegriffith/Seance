@@ -66,7 +66,110 @@ html, body {
 
 /* ━━━ IDLE STATE ━━━ */
 #idle-state {
-  /* Pure fire animation, no content */
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.sacrifice-flashes-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 5;
+}
+
+#qr-code-overlay {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  z-index: 10;
+  animation: hover-float 4s ease-in-out infinite;
+  transition: opacity 1s ease-out;
+}
+
+.qr-title {
+  color: var(--primary-green);
+  font-size: 48px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.qr-image {
+  width: 300px;
+  height: 300px;
+  border-radius: 10px;
+  border: 2px solid var(--primary-green);
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+  background: rgba(0, 10, 0, 0.8);
+  padding: 15px;
+}
+
+#qr-code-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes hover-float {
+  0% {
+    transform: translateX(-50%) translateY(0px);
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-20px);
+    box-shadow: 0 0 50px rgba(0, 255, 136, 0.7);
+  }
+  100% {
+    transform: translateX(-50%) translateY(0px);
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+  }
+}
+
+.sacrifice-flash {
+  position: absolute;
+  max-width: 60%;
+  max-height: 60%;
+  opacity: 0;
+  transform: scale(0.8);
+  filter: drop-shadow(0 0 20px #00ff88) sepia(1) hue-rotate(90deg) saturate(300%) brightness(1.5);
+  animation: sacrifice-flash-anim 0.8s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+}
+
+@keyframes sacrifice-flash-anim {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translate(var(--tx-start), var(--ty-start));
+  }
+  15% {
+    opacity: 0.8;
+    transform: scale(1.1) translate(var(--tx-mid), var(--ty-mid));
+    filter: drop-shadow(0 0 40px #00ff88) sepia(1) hue-rotate(90deg) saturate(300%) brightness(2);
+  }
+  30% {
+    opacity: 0.4;
+    transform: scale(1) translate(var(--tx-mid), var(--ty-mid));
+  }
+  45% {
+    opacity: 0.7;
+    filter: drop-shadow(0 0 30px #00ff88) sepia(1) hue-rotate(90deg) saturate(300%) brightness(1.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2) translate(var(--tx-end), var(--ty-end));
+  }
 }
 
 /* ━━━ REVELATION MESSAGE ━━━ */

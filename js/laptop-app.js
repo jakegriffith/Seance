@@ -401,16 +401,68 @@ class LaptopApp {
   }
   
   setupFirebaseListeners() {
-    // Listen to ritual state changes
+    // Listen to state changes
     this.session.onStateChange((state) => {
-      console.log('🔥 Firebase state update:', state);
+      console.log('🔥 Laptop State Update:', state);
       this.handleStateSync(state);
+    });
+    
+    // Listen for new sacrifice images
+    this.session.onSacrificeAdded((sacrifice) => {
+      if (sacrifice && sacrifice.imageData) {
+        this.flashSacrificeImage(sacrifice.imageData);
+      }
     });
   }
   
+  flashSacrificeImage(imageData) {
+    const container = document.getElementById('sacrifice-flashes');
+    if (!container) return;
+    
+    const img = document.createElement('img');
+    img.src = imageData;
+    img.className = 'sacrifice-flash';
+    
+    // Randomize path slightly for effect
+    const startX = (Math.random() - 0.5) * 40; // -20% to 20%
+    const startY = (Math.random() - 0.5) * 40;
+    const midX = startX + (Math.random() - 0.5) * 20;
+    const midY = startY + (Math.random() - 0.5) * 20;
+    const endX = midX + (Math.random() - 0.5) * 20;
+    const endY = midY - 20 - Math.random() * 30; // Float upwards
+    
+    img.style.setProperty('--tx-start', `${startX}%`);
+    img.style.setProperty('--ty-start', `${startY}%`);
+    img.style.setProperty('--tx-mid', `${midX}%`);
+    img.style.setProperty('--ty-mid', `${midY}%`);
+    img.style.setProperty('--tx-end', `${endX}%`);
+    img.style.setProperty('--ty-end', `${endY}%`);
+    
+    // Randomize animation duration slightly
+    const duration = 0.6 + Math.random() * 0.5;
+    img.style.animationDuration = `${duration}s`;
+    
+    container.appendChild(img);
+    
+    // Remove after animation completes
+    setTimeout(() => {
+      if (img.parentNode) {
+        img.parentNode.removeChild(img);
+      }
+    }, duration * 1000);
+  }
+  
   handleStateSync(firebaseState) {
+    // Save the raw firebase state for fine-grained sub-state logic (like QR code)
+    this.rawFirebaseState = firebaseState;
+    
     // Map Firebase states to laptop states
     const stateMap = {
+      'part1': LaptopState.IDLE,
+      'part2': LaptopState.IDLE,
+      'part3': LaptopState.MANIFESTING,
+      'part4': LaptopState.LISTENING,
+      'part5': LaptopState.REVELATION,
       'gathering': LaptopState.IDLE,
       'sacrifice': LaptopState.IDLE,
       'summoning': LaptopState.MANIFESTING,
@@ -421,6 +473,18 @@ class LaptopApp {
     };
     
     const newState = stateMap[firebaseState] || LaptopState.IDLE;
+    
+    // Check specific logic within the same visual state
+    if (newState === LaptopState.IDLE) {
+      const qrCode = document.getElementById('qr-code-overlay');
+      if (qrCode) {
+        if (firebaseState === 'part1' || firebaseState === 'gathering') {
+          qrCode.classList.remove('hidden');
+        } else {
+          qrCode.classList.add('hidden');
+        }
+      }
+    }
     
     // Only update if different
     if (this.currentState !== newState) {

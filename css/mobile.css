@@ -135,6 +135,65 @@ html, body {
 }
 
 /* ━━━ SACRIFICE PHASE ━━━ */
+.sacrifice-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  width: 100%;
+  height: 100%;
+}
+
+.sacrifice-prompt {
+  font-size: var(--font-size-lg);
+  color: var(--primary-green);
+  text-align: center;
+  margin-bottom: var(--space-md);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+.canvas-wrapper {
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: 60vh;
+  border: 1px solid var(--primary-green);
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+  background: rgba(0, 20, 0, 0.3);
+  position: relative;
+  touch-action: none; /* Prevent scrolling while drawing */
+}
+
+#drawing-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.sacrifice-btn {
+  font-size: var(--font-size-md);
+  padding: var(--space-md) var(--space-xl);
+  min-width: 250px;
+  background: transparent;
+  border: 1px solid var(--primary-green);
+  color: var(--primary-green);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: var(--font-mono);
+}
+
+.sacrifice-btn:hover {
+  background: rgba(0, 255, 136, 0.1);
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+
+.sacrifice-btn:active {
+  transform: scale(0.98);
+}
+
 .sacrifice-status {
   text-align: center;
   margin: var(--space-xl) 0;

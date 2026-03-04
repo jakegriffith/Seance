@@ -64,7 +64,7 @@ class RitualSession {
       if (!snapshot.exists()) {
         // New session - initialize
         await this.sessionRef.set({
-          state: 'gathering',
+          state: 'part1',
           ritualStarted: false,
           created: firebase.database.ServerValue.TIMESTAMP,
           participantCount: 0
@@ -146,7 +146,7 @@ class RitualSession {
   async resetRitual() {
     try {
       await this.sessionRef.update({
-        state: 'gathering',
+        state: 'part1',
         ritualStarted: false
       });
       console.log('🔄 Ritual reset and unlocked');
@@ -165,6 +165,23 @@ class RitualSession {
     }
   }
   
+  // Submit sacrifice image
+  async submitSacrificeImage(imageData) {
+    try {
+      const sacrificeId = this.generateId();
+      
+      await this.sessionRef.child('sacrifices').child(sacrificeId).set({
+        userId: this.userId,
+        imageData: imageData,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+      });
+      
+      console.log('✓ Sacrifice image submitted');
+    } catch (error) {
+      console.error('Failed to submit sacrifice image:', error);
+    }
+  }
+
   // Submit question
   async submitQuestion(questionText) {
     try {
@@ -319,6 +336,16 @@ class RitualSession {
     this.sessionRef.child('questions').on('value', (snapshot) => {
       const questions = snapshot.val() || {};
       callback(questions);
+    });
+  }
+  
+  // Listen for new sacrifice images
+  onSacrificeAdded(callback) {
+    this.sessionRef.child('sacrifices').on('child_added', (snapshot) => {
+      const sacrifice = snapshot.val();
+      if (sacrifice) {
+        callback(sacrifice);
+      }
     });
   }
   
