@@ -78,9 +78,27 @@ class MobileApp {
     if (joinBtn) {
       joinBtn.addEventListener('click', () => {
         document.getElementById('entry-overlay').classList.add('hidden');
+        
+        // 1. Unlock Web Audio API (for rumbling/beeps)
         this.unlockAudio();
         
-        // Sync to current firebase state immediately
+        // 2. Silently unlock all HTML5 <audio> tags immediately during this click event!
+        // This gives the browser permission to play these later when the Firebase state changes.
+        const allAudios = document.querySelectorAll('audio');
+        allAudios.forEach(audio => {
+          audio.volume = 0; // completely silent
+          const p = audio.play();
+          if (p !== undefined) {
+             p.then(() => {
+               audio.pause();
+               audio.currentTime = 0;
+             }).catch(err => {
+               console.warn("Silent unlock play rejected", err);
+             });
+          }
+        });
+        
+        // 3. Sync to current firebase state immediately
         this.session.sessionRef.child('state').once('value').then(snapshot => {
           const state = snapshot.val();
           if (state) {
@@ -167,15 +185,13 @@ class MobileApp {
       targetAudio.volume = 1.0;
       targetAudio.currentTime = 0;
       
-      // Some browsers require a slight delay to process the pause() commands above
-      setTimeout(() => {
-        const playPromise = targetAudio.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(error => {
-            console.warn(`Audio play prevented for ${partStr}:`, error);
-          });
-        }
-      }, 50);
+      // Play immediately, synchronous with the state update
+      const playPromise = targetAudio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.warn(`Audio play prevented for ${partStr}:`, error);
+        });
+      }
     } else {
       console.warn(`⚠️ Target audio element not found: ${targetAudioId}`);
     }
