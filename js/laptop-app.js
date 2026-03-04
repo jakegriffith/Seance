@@ -458,6 +458,7 @@ class LaptopApp {
     
     // Map Firebase states to laptop states
     const stateMap = {
+      'idle': LaptopState.IDLE,
       'part1': LaptopState.IDLE,
       'part2': LaptopState.IDLE,
       'part3': LaptopState.MANIFESTING,
@@ -478,7 +479,7 @@ class LaptopApp {
     if (newState === LaptopState.IDLE) {
       const qrCode = document.getElementById('qr-code-overlay');
       if (qrCode) {
-        if (firebaseState === 'part1' || firebaseState === 'gathering') {
+        if (firebaseState === 'idle' || firebaseState === 'part1' || firebaseState === 'gathering') {
           qrCode.classList.remove('hidden');
         } else {
           qrCode.classList.add('hidden');
