@@ -65,7 +65,13 @@ class MobileApp {
     document.getElementById('dismissed-state').classList.add('hidden');
     
     // Start background digital rain immediately so it's visible behind overlay
-    this.matrixRain.start();
+    // Force a resize calculation before starting to avoid mobile layout glitches
+    setTimeout(() => {
+      if (this.matrixRain && typeof this.matrixRain.resize === 'function') {
+        this.matrixRain.resize();
+      }
+      this.matrixRain.start();
+    }, 100);
     
     // Wait for user to explicitly join
     const joinBtn = document.getElementById('btn-begin-connection');
