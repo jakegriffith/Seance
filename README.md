@@ -71,82 +71,51 @@ Generate QR Code:
 
 ### Setup
 
-1. Operator Dashboard Setup:
-   - Open `https://your-ritual.netlify.app/operator.html` on your control device
-   - This is your command center - you control all ritual state transitions
-   - View real-time participant data, sacrifices, questions, and votes
-   - Keep this open throughout the performance
-
-2. Laptop Setup:
+1. Laptop Setup (Vessel):
    - Open `https://your-ritual.netlify.app/laptop.html`
    - Press F11 for fullscreen
-   - Leave it running - it's the ghost's vessel
-   - This display is purely reactive - operator controls it
+   - Leave it running. It displays the fire/smoke animations and the QR code for joining.
 
-3. Mobile Setup:
-   - Share URL or show QR code: `https://your-ritual.netlify.app/`
-   - Participants scan/visit URL
-   - Everyone automatically joins same ritual
-   - Participants can submit data but cannot advance the ritual
+2. Mobile Setup (Participants):
+   - Share URL or show the QR code on the laptop.
+   - Participants tap "Begin Connection" to unlock audio and join the session.
+   - The phones act as local managers, advancing the ritual based on everyone's collective progress and local audio playback.
 
-### The Ritual Flow (Operator-Controlled)
+3. Operator Dashboard (Optional/Override):
+   - Open `https://your-ritual.netlify.app/operator.html` on your control device.
+   - This dashboard is no longer strictly required to run the show, but serves as a crucial override tool. If someone leaves mid-session without submitting a drawing or question, the ritual will wait for them. The operator can force a state transition to keep things moving.
 
-All state transitions are controlled by the operator dashboard. Mobile and laptop interfaces are purely reactive.
+### The Autonomous Ritual Flow
 
-1. GATHERING to SACRIFICE (Operator clicks)
-   - Participants join and their phones detect orientation
-   - Operator monitors participant count
-   - When ready, operator clicks "Start Sacrifice Phase"
+The ritual is now fully autonomous, driven by an `AutoAdvanceManager` on the mobile devices that listens for audio completion and user inputs. The Operator Dashboard acts as an optional (but recommended) monitoring tool for manual overrides.
 
-2. SACRIFICE to SUMMONING (Operator clicks when ready)
-   - Each participant places physical sacrifice in circle
-   - Participants describe sacrifices on phones
-   - Operator dashboard shows all sacrifices in real-time
-   - Button enables only when all participants have sacrificed
-   - Operator clicks "Begin Summoning" when ready
+1. IDLE (Gathering)
+   - Participants join by scanning the QR code and clicking "Begin Connection".
+   - The first join starts a 30-second quiesce timer.
+   - If no one else joins within 30 seconds, the ritual advances automatically to Part 1.
 
-3. SUMMONING to MONOLOGUE (Operator clicks)
-   - All devices show summoning animation
-   - Mobile devices play the natural audio track (synthetic droning sound removed for clarity)
-   - Laptop begins manifestation sequence
-   - Operator advances when animation completes
+2. PART 1 to PART 3 (Sacrifice & Summoning)
+   - The system plays the Part 1 introductory audio.
+   - Participants are prompted to draw their digital sacrifices on a canvas and submit them to the fire.
+   - Once the audio finishes *and* all connected participants have submitted their drawings, the ritual automatically advances to Part 3 (Summoning).
 
-4. MONOLOGUE to LISTENING (Operator clicks)
-   - Ghost speaks on laptop
-   - Operator can advance at any point (sync with audio cues)
-   - Typical duration: ~45 seconds
+3. PART 3 to PART 4 (Manifestation & Questioning)
+   - Audio for Part 3 plays. The laptop shows the manifestation/smoke sequence.
+   - When the Part 3 audio finishes, it automatically advances to Part 4.
+   - Participants are prompted to ask a question to the dead internet.
 
-5. LISTENING to VOTING (Operator clicks when questions received)
-   - Participants submit questions on phones
-   - Operator dashboard displays all questions in real-time
-   - Button enables when at least one question submitted
-   - Operator decides when to advance to voting
+4. PART 4 to PART 5 (Listening & Revelation)
+   - When the Part 4 audio finishes *and* all connected participants have submitted their questions, the ritual automatically advances to Part 5.
 
-6. VOTING to REVEALING (Operator clicks)
-   - Participants see submitted questions
-   - Vote tallies visible in operator dashboard
-   - Operator advances when voting window closes
+5. PART 5 to DISMISSAL
+   - Part 5 audio plays. Participants must scratch off a layer on their screen to reveal the response.
+   - The ritual automatically transitions to a Dismissal state when audio concludes.
 
-7. REVEALING to PAYWALL (Operator clicks)
-   - Laptop displays winning question dramatically
-   - Ghost considers the question
-   - Operator advances after dramatic pause
+6. AUTO-RESET
+   - Ten seconds after reaching Dismissal, the ritual automatically clears all session data, resets user states, and returns to `idle`, ready for a new group.
 
-8. PAYWALL to DENIED (Operator clicks)
-   - Ghost says: "I have your answer, but first..."
-   - "You must provide your credit card..."
-   - 45-second countdown timer
-   - Operator can skip timer by advancing to denied
-
-9. DENIED to GATHERING (Operator clicks to reset)
-   - Ghost: "Your lack of generosity will keep you blind"
-   - Screen corrupts
-   - Operator returns to gathering to start new cycle
-
-10. EMERGENCY RESET (Operator button)
-    - Red emergency button available at all times
-    - Resets to GATHERING and clears all participant data
-    - Use if ritual breaks or needs restart
+7. OPERATOR OVERRIDE
+   - At any time, the Operator Dashboard can be used to manually force transitions. This is crucial if a participant abandons the session mid-ritual, leaving the system waiting indefinitely for their drawing or question.
 
 ## Firebase Database Structure
 
@@ -266,25 +235,22 @@ Humor: Late capitalism, subscription culture, digital disappointment
 
 ## Operator Dashboard Features
 
-The operator dashboard (`operator.html`) provides complete control over the ritual:
+The operator dashboard (`operator.html`) is designed to monitor and rescue autonomous sessions that get stuck:
 
 ### Real-Time Monitoring
-- Participant table - Connection status, sacrifice completion, question submission, voting
-- Sacrifices panel - View all submitted sacrifices with participant IDs
-- Questions panel - See all questions as they're submitted
-- Votes panel - Live vote counts for each question
-- System log - Real-time event logging
+- Participant table - Connection status, drawing completion, and question submission.
+- Sacrifices panel - View all submitted drawings (with visual playback).
+- Questions panel - See all submitted questions as they roll in.
+- System log - View real-time Firebase transitions (`idle` → `part1`, etc.).
 
-### State Control
-- Large, obvious buttons for each state transition
-- Conditional enabling (e.g., summoning only enabled when all sacrificed)
-- Visual state indicator shows current ritual phase
-- Requirements displayed on buttons (e.g., "3/4 sacrifices")
+### State Override
+- A set of override buttons allowing you to force the ritual forward (`Force to Part 3`, `Force to Part 4`, `Force to Part 5`).
+- Visual state indicator shows the current global state so you know exactly where the autonomous flow is.
+- Used to un-stick the ritual if participants fail to complete a mandatory step (like abandoning the page before drawing).
 
 ### Safety Features
-- Emergency reset button (returns to gathering, clears data)
-- All transitions require explicit operator confirmation
-- No automatic state advancement
+- Emergency reset button (returns to `idle`, clears all data, resets all local app states).
+- Use this if the session breaks entirely or the audio falls hopelessly out of sync between participants.
 
 ## Future Enhancements
 
