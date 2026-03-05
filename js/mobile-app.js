@@ -8,12 +8,9 @@ const AppState = {
   GATHERING: 'gathering',
   SACRIFICE: 'sacrifice',
   SUMMONING: 'summoning',
-  LISTENING: 'listening',      // Ghost listens for questions
-  REVELATION: 'revelation',    // Scratch-off reveal
-  WAITING: 'waiting',          // Wait during paywall timer
-  MANIFESTED: 'manifested',
-  SPEAKING: 'speaking',
-  FAILED: 'failed',
+  LISTENING: 'listening',   // Ghost listens for questions
+  REVELATION: 'revelation', // Scratch-off reveal
+  WAITING: 'waiting',       // Wait during question phase
   DISMISSED: 'dismissed'
 };
 
@@ -40,27 +37,32 @@ class MobileApp {
   
   async init() {
     console.log('🌑 Dead Internet Ritual - Mobile Interface');
-    
+
     // Initialize Firebase session
     this.session = new RitualSession();
     await this.session.initSession();
-    
+
     console.log('User ID:', this.session.userId);
     console.log('Session ID:', this.session.sessionId);
-    
+
+    // Initialize auto-advance manager
+    this.autoAdvance = new AutoAdvanceManager(this.session);
+    this.autoAdvance.setApp(this);
+
     // Setup event listeners
     this.setupEventListeners();
-    
+
     // Setup Firebase listeners
     this.setupFirebaseListeners();
+
+    // Setup audio ended hooks for auto-advance
+    this.setupAudioListeners();
     
     // Hide all states first, show entry overlay
     document.getElementById('gathering-state').classList.add('hidden');
     document.getElementById('sacrifice-state').classList.add('hidden');
     document.getElementById('summoning-state').classList.add('hidden');
     document.getElementById('manifested-state').classList.add('hidden');
-    document.getElementById('speaking-state').classList.add('hidden');
-    document.getElementById('failed-state').classList.add('hidden');
     document.getElementById('revelation-state').classList.add('hidden');
     document.getElementById('dismissed-state').classList.add('hidden');
     
@@ -78,34 +80,38 @@ class MobileApp {
     if (joinBtn) {
       joinBtn.addEventListener('click', () => {
         document.getElementById('entry-overlay').classList.add('hidden');
-        
+
         // 1. Unlock Web Audio API (for rumbling/beeps)
         this.unlockAudio();
-        
-        // 2. Silently unlock all HTML5 <audio> tags immediately during this click event!
-        // This gives the browser permission to play these later when the Firebase state changes.
+
+        // 2. Activate auto-advance NOW — inside user gesture, before any async work
+        this.autoAdvance.activate();
+
+        // 3. Silent-unlock all HTML5 <audio> tags during this click event.
+        //    Collect promises so we can wait for ALL .then(pause/reset) callbacks
+        //    to complete before calling handleStateSync — prevents race where
+        //    a pause callback kills audio that playAudioForPart() just started.
         const allAudios = document.querySelectorAll('audio');
+        const playPromises = [];
         allAudios.forEach(audio => {
-          audio.volume = 0; // completely silent
+          audio.volume = 0;
           const p = audio.play();
           if (p !== undefined) {
-             p.then(() => {
-               audio.pause();
-               audio.currentTime = 0;
-             }).catch(err => {
-               console.warn("Silent unlock play rejected", err);
-             });
+            playPromises.push(p.catch(() => {}));
           }
         });
-        
-        // 3. Sync to current firebase state immediately
-        this.session.sessionRef.child('state').once('value').then(snapshot => {
-          const state = snapshot.val();
-          if (state) {
-            this.handleStateSync(state);
-          } else {
-            this.setState(AppState.GATHERING);
-          }
+
+        Promise.allSettled(playPromises).then(() => {
+          // All silent unlock .then()s have now fired — safe to play real audio
+          allAudios.forEach(audio => { audio.pause(); audio.currentTime = 0; });
+          this.session.sessionRef.child('state').once('value').then(snapshot => {
+            const state = snapshot.val();
+            if (state) {
+              this.handleStateSync(state);
+            } else {
+              this.setState(AppState.GATHERING);
+            }
+          });
         });
       });
     }
@@ -116,36 +122,32 @@ class MobileApp {
     this.session.onParticipantCountChange((count) => {
       this.updateParticipantCount(count);
     });
-    
+
     // Listen to ritual state changes
     this.session.onStateChange((state) => {
       console.log('🔥 Firebase state update:', state);
       this.handleStateSync(state);
     });
-    
-    // Listen to questions and timer
-    this.session.onQuestionsChange((questions) => {
-      this.updateQuestionStatus(questions);
-    });
   }
   
   handleStateSync(firebaseState) {
+    // Feed into auto-advance manager first
+    this.autoAdvance.onStateChange(firebaseState);
+
     // Map Firebase states to app states
     const stateMap = {
+      'idle': AppState.GATHERING,
       'part1': AppState.GATHERING,
       'part2': AppState.SACRIFICE,
       'part3': AppState.SUMMONING,
       'part4': AppState.LISTENING,
       'part5': AppState.REVELATION,
-      'gathering': AppState.GATHERING, // Fallbacks
+      'gathering': AppState.GATHERING,
       'sacrifice': AppState.SACRIFICE,
       'summoning': AppState.SUMMONING,
       'monologue': AppState.SUMMONING,
       'listening': AppState.LISTENING,
       'revelation': AppState.REVELATION,
-      'manifested': AppState.MANIFESTED,
-      'speaking': AppState.SPEAKING,
-      'failed': AppState.FAILED,
       'dismissal': AppState.DISMISSED,
       'dismissed': AppState.DISMISSED
     };
@@ -206,6 +208,26 @@ class MobileApp {
         this.handleQuestionSubmit();
       });
     }
+
+    // Sacrifice submit — attached once here, delegates to current canvas instance
+    const submitBtn = document.getElementById('submit-sacrifice');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', async () => {
+        if (!this.drawingCanvas || submitBtn.disabled) return;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Throwing...';
+
+        const canvas = document.getElementById('drawing-canvas');
+        if (canvas) {
+          const imageData = canvas.toDataURL('image/png');
+          await this.session.submitSacrificeImage(imageData);
+        }
+
+        this.drawingCanvas.startFireAnimation();
+        await this.session.setReady();
+        submitBtn.textContent = 'Awaiting others...';
+      });
+    }
   }
   
   
@@ -238,64 +260,6 @@ class MobileApp {
     }
   }
   
-  playRumbleNotification() {
-    if (!this.audioContext) {
-      console.warn('⚠️ Audio not unlocked yet');
-      return;
-    }
-    
-    try {
-      // Resume context if suspended (mobile requirement)
-      if (this.audioContext.state === 'suspended') {
-        this.audioContext.resume();
-      }
-      
-      const now = this.audioContext.currentTime;
-      const duration = 2; // 2 seconds for more noticeable effect
-      
-      // Create THREE oscillators for a richer, louder rumble
-      // Low bass (80Hz)
-      const bass = this.audioContext.createOscillator();
-      bass.frequency.value = 80;
-      bass.type = 'sawtooth';
-      
-      // Mid rumble (120Hz) 
-      const mid = this.audioContext.createOscillator();
-      mid.frequency.value = 120;
-      mid.type = 'square'; // Harsher tone
-      
-      // High warning tone (200Hz) - makes it more audible on small speakers
-      const high = this.audioContext.createOscillator();
-      high.frequency.value = 200;
-      high.type = 'triangle';
-      
-      // Master gain - MUCH LOUDER
-      const masterGain = this.audioContext.createGain();
-      masterGain.gain.setValueAtTime(0, now);
-      masterGain.gain.linearRampToValueAtTime(0.8, now + 0.05); // Very loud, fast attack
-      masterGain.gain.linearRampToValueAtTime(0.6, now + duration - 0.2); // Sustain
-      masterGain.gain.exponentialRampToValueAtTime(0.01, now + duration); // Fade out
-      
-      // Connect all oscillators to master gain
-      bass.connect(masterGain);
-      mid.connect(masterGain);
-      high.connect(masterGain);
-      masterGain.connect(this.audioContext.destination);
-      
-      // Start all and stop after duration
-      bass.start(now);
-      mid.start(now);
-      high.start(now);
-      bass.stop(now + duration);
-      mid.stop(now + duration);
-      high.stop(now + duration);
-      
-      console.log('🔊 Playing LOUD rumble notification (2s)');
-    } catch (error) {
-      console.warn('Rumble playback failed:', error);
-    }
-  }
-  
   setState(newState) {
     console.log('State transition:', this.currentState, '→', newState);
     
@@ -306,110 +270,89 @@ class MobileApp {
     document.getElementById('sacrifice-state').classList.add('hidden');
     document.getElementById('summoning-state').classList.add('hidden');
     document.getElementById('manifested-state').classList.add('hidden');
-    document.getElementById('speaking-state').classList.add('hidden');
-    document.getElementById('failed-state').classList.add('hidden');
     document.getElementById('revelation-state').classList.add('hidden');
     document.getElementById('dismissed-state').classList.add('hidden');
-    
+
     // Show current state container
     switch (newState) {
       case AppState.GATHERING:
         document.getElementById('gathering-state').classList.remove('hidden');
-        // Ensure rain is running
-        if (!this.matrixRain.isRunning) this.matrixRain.start();
+        if (!this.matrixRain.isActive) this.matrixRain.start();
         break;
-        
+
       case AppState.SACRIFICE:
         document.getElementById('sacrifice-state').classList.remove('hidden');
-        // Ensure rain is running
-        if (!this.matrixRain.isRunning) this.matrixRain.start();
+        if (!this.matrixRain.isActive) this.matrixRain.start();
         this.initDrawingCanvas();
         break;
-        
+
       case AppState.SUMMONING:
         document.getElementById('summoning-state').classList.remove('hidden');
         this.matrixRain.stop();
-        
-        // Audio alert at start of summoning
-        this.playRumbleNotification();
-        
         this.startSummoningRitual();
         break;
-        
+
       case AppState.LISTENING:
       case AppState.WAITING:
-        // Use manifested state for these
         document.getElementById('manifested-state').classList.remove('hidden');
         this.updateWaitingMessage(newState);
         break;
-        
-      case AppState.MANIFESTED:
-        document.getElementById('manifested-state').classList.remove('hidden');
-        this.matrixRain.stop();
-        break;
-        
-      case AppState.SPEAKING:
-        document.getElementById('speaking-state').classList.remove('hidden');
-        break;
-        
-      case AppState.FAILED:
-        document.getElementById('failed-state').classList.remove('hidden');
-        this.matrixRain.stop();
-        this.handleFailedRitual();
-        break;
-        
+
       case AppState.REVELATION:
+        // Reset scratch-off so it redraws cleanly on each loop
+        this.scratchOff = null;
         document.getElementById('revelation-state').classList.remove('hidden');
         this.matrixRain.stop();
-        
-        // Vibration only for revelation
-        this.vibrate([100, 50, 100]); // Android only
-        
+        this.vibrate([100, 50, 100]);
         this.initScratchOff();
         break;
-        
+
       case AppState.DISMISSED:
         document.getElementById('dismissed-state').classList.remove('hidden');
-        this.handleDismissed();
         break;
     }
   }
   
   initDrawingCanvas() {
-    if (!this.drawingCanvas) {
-      this.drawingCanvas = new DrawingCanvas('drawing-canvas');
-      
-      const submitBtn = document.getElementById('submit-sacrifice');
-      if (submitBtn) {
-        submitBtn.addEventListener('click', async () => {
-          submitBtn.disabled = true;
-          submitBtn.textContent = 'Throwing...';
-          
-          // Capture the user's drawing as base64 image data
-          const canvas = document.getElementById('drawing-canvas');
-          if (canvas) {
-            const imageData = canvas.toDataURL('image/png');
-            // Send the image to Firebase for the laptop to pick up
-            await this.session.submitSacrificeImage(imageData);
-          }
-          
-          // Start the fire animation overtaking the drawing locally
-          this.drawingCanvas.startFireAnimation();
-          
-          await this.session.setReady();
-          submitBtn.textContent = 'Awaiting others...';
-        });
-      }
-    } else {
-      this.drawingCanvas.resizeCanvas();
+    // drawingCanvas is reset to null before this call on each loop (see setState SACRIFICE case)
+    this.drawingCanvas = new DrawingCanvas('drawing-canvas');
+
+    // Reset button state for this loop
+    const submitBtn = document.getElementById('submit-sacrifice');
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Throw it into the fire';
     }
   }
   
   initScratchOff() {
-    // Initialize scratch-off canvas only once
     if (!this.scratchOff) {
       this.scratchOff = new ScratchOffCanvas('scratch-canvas');
     }
+  }
+
+  // Called by AutoAdvanceManager when Part 1 audio ends — shows drawing canvas locally
+  // without changing global Firebase state (everyone stays on part1 globally)
+  showDrawingCanvas() {
+    if (this.currentState === AppState.SACRIFICE) return; // Already showing
+    this.setState(AppState.SACRIFICE);
+  }
+
+  // Hook audio.ended events for all parts so AutoAdvanceManager can drive progression
+  setupAudioListeners() {
+    const parts = ['part1', 'part2', 'part3', 'part4', 'part5'];
+    parts.forEach(part => {
+      const audio = document.getElementById(`audio-${part}`);
+      if (audio) {
+        audio.addEventListener('ended', () => {
+          if (part === 'part1') {
+            this.autoAdvance.onPart1AudioEnded();
+          } else {
+            this.autoAdvance.onAudioEnded(part);
+          }
+        });
+      }
+    });
   }
   
   updateWaitingMessage(state) {
@@ -481,20 +424,6 @@ class MobileApp {
     console.log(`📳 Vibration pattern: ${cycles} cycles over ${duration}ms`);
   }
   
-  handleFailedRitual() {
-    console.log('💀 Ritual failed');
-    
-    VisualEffects.GlitchEffects.invertColors(200);
-    setTimeout(() => {
-      VisualEffects.GlitchEffects.staticBurst(this.canvas, 300);
-    }, 500);
-  }
-  
-  handleDismissed() {
-    // Operator dashboard now controls state transitions
-    // Mobile interface is purely reactive
-  }
-  
   async handleQuestionSubmit() {
     const input = document.getElementById('question-input');
     const question = input.value.trim();
@@ -515,47 +444,10 @@ class MobileApp {
       submitButton.textContent = 'Question Submitted ✓';
     }
     
+    this.addQuestionToFeed(question);
     VisualEffects.GlitchEffects.flashScreen('#00ff88', 100);
   }
-  
-  async updateQuestionStatus(questions) {
-    if (this.currentState !== AppState.MANIFESTED) return;
-    
-    const questionCount = Object.keys(questions).length;
-    
-    // Update message with count
-    const container = document.querySelector('#manifested-state .manifestation-message');
-    if (container) {
-      container.innerHTML = `
-        <h2 class="glitch" data-text="The Ghost Manifests">The Ghost Manifests</h2>
-        <p>Questions submitted: ${questionCount}</p>
-      `;
-    }
-    
-    // Check timer from Firebase
-    const snapshot = await this.session.sessionRef.child('questionTimer').once('value');
-    const timerStart = snapshot.val();
-    
-    if (timerStart) {
-      const elapsed = Date.now() - timerStart;
-      const remaining = Math.max(0, 30000 - elapsed); // 30 seconds
-      
-      if (remaining > 0) {
-        const seconds = Math.ceil(remaining / 1000);
-        container.innerHTML = `
-          <h2 class="glitch" data-text="The Ghost Manifests">The Ghost Manifests</h2>
-          <p>Questions: ${questionCount}</p>
-          <p class="text-dim">Selection in ${seconds}s...</p>
-        `;
-        
-        // Schedule check or let it happen naturally
-      } else if (questionCount > 0) {
-        // Timer expired - select random question
-        await this.session.selectRandomQuestion();
-      }
-    }
-  }
-  
+
   addQuestionToFeed(question) {
     const feed = document.getElementById('question-feed');
     if (!feed) return;

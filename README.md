@@ -107,6 +107,7 @@ All state transitions are controlled by the operator dashboard. Mobile and lapto
 
 3. SUMMONING to MONOLOGUE (Operator clicks)
    - All devices show summoning animation
+   - Mobile devices play the natural audio track (synthetic droning sound removed for clarity)
    - Laptop begins manifestation sequence
    - Operator advances when animation completes
 

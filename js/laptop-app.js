@@ -406,11 +406,20 @@ class LaptopApp {
       console.log('🔥 Laptop State Update:', state);
       this.handleStateSync(state);
     });
-    
+
     // Listen for new sacrifice images
     this.session.onSacrificeAdded((sacrifice) => {
       if (sacrifice && sacrifice.imageData) {
         this.flashSacrificeImage(sacrifice.imageData);
+      }
+    });
+
+    // Fade QR code when quiesce fires (5s no new joins)
+    this.session.onQrVisibleChange((visible) => {
+      const qrCode = document.getElementById('qr-code-overlay');
+      if (qrCode && visible === false) {
+        qrCode.classList.add('fading-out');
+        setTimeout(() => qrCode.classList.add('hidden'), 1500);
       }
     });
   }
@@ -475,12 +484,13 @@ class LaptopApp {
     
     const newState = stateMap[firebaseState] || LaptopState.IDLE;
     
-    // Check specific logic within the same visual state
+    // QR code visibility within the idle visual state
     if (newState === LaptopState.IDLE) {
       const qrCode = document.getElementById('qr-code-overlay');
       if (qrCode) {
         if (firebaseState === 'idle' || firebaseState === 'part1' || firebaseState === 'gathering') {
-          qrCode.classList.remove('hidden');
+          // Reset any fade-out classes so QR is fully visible at start of each loop
+          qrCode.classList.remove('hidden', 'fading-out');
         } else {
           qrCode.classList.add('hidden');
         }

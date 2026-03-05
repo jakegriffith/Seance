@@ -20,6 +20,14 @@ firebase.initializeApp(firebaseConfig);
 // Get database reference
 const database = firebase.database();
 
+// ━━━ AUTO-ADVANCE TIMING CONFIGURATION ━━━
+// Adjust these values to tune the experience pacing
+const RITUAL_TIMINGS = {
+  quiesceMs: 30000,       // Silence window (ms) after last join before advancing from Part 1
+  dismissalResetMs: 10000 // Auto-reset delay (ms) after dismissal state
+};
+window.RITUAL_TIMINGS = RITUAL_TIMINGS;
+
 // ━━━ SESSION MANAGEMENT ━━━
 class RitualSession {
   constructor() {
@@ -94,13 +102,16 @@ class RitualSession {
         hasVoted: false,
         vote: null
       });
-      
+
+      // Record join time at session level so quiesce window resets on every new arrival
+      await this.sessionRef.update({ lastJoinAt: firebase.database.ServerValue.TIMESTAMP });
+
       // Handle disconnect
       this.userRef.onDisconnect().update({ connected: false });
-      
+
       // Update participant count
       this.updateParticipantCount();
-      
+
       console.log('✓ Participant registered');
     } catch (error) {
       console.error('Failed to register participant:', error);
@@ -142,14 +153,43 @@ class RitualSession {
     }
   }
   
-  // Reset ritual (clears lock flag)
+  // Reset ritual — full clean slate for next loop
   async resetRitual() {
     try {
+      // Reset session-level fields
       await this.sessionRef.update({
         state: 'idle',
-        ritualStarted: false
+        ritualStarted: false,
+        stateChangedAt: null,
+        lastJoinAt: null,
+        qrVisible: null,
+        questionTimer: null,
+        selectedQuestion: null,
+        questions: null,
+        sacrifices: null
       });
-      console.log('🔄 Ritual reset and unlocked');
+
+      // Reset per-participant flags so Part 1/2/4 conditions work on replay
+      const snapshot = await this.participantsRef.once('value');
+      const participants = snapshot.val() || {};
+      const updates = {};
+      for (const userId in participants) {
+        if (participants[userId].connected) {
+          updates[`${userId}/isReady`] = false;
+          updates[`${userId}/hasSubmittedQuestion`] = false;
+          updates[`${userId}/question`] = null;
+          updates[`${userId}/part1AudioDone`] = null;
+          updates[`${userId}/part2AudioDone`] = null;
+          updates[`${userId}/part3AudioDone`] = null;
+          updates[`${userId}/part4AudioDone`] = null;
+          updates[`${userId}/part5AudioDone`] = null;
+        }
+      }
+      if (Object.keys(updates).length > 0) {
+        await this.participantsRef.update(updates);
+      }
+
+      console.log('🔄 Ritual fully reset');
     } catch (error) {
       console.error('Failed to reset ritual:', error);
     }
@@ -197,15 +237,7 @@ class RitualSession {
         hasSubmittedQuestion: true,
         question: questionText
       });
-      
-      // Start timer if this is the first question
-      const snapshot = await this.sessionRef.child('questionTimer').once('value');
-      if (!snapshot.exists()) {
-        const timerStart = Date.now();
-        await this.sessionRef.update({ questionTimer: timerStart });
-        console.log('⏱️ Question timer started (30 seconds)');
-      }
-      
+
       console.log('✓ Question submitted');
     } catch (error) {
       console.error('Failed to submit question:', error);
@@ -349,6 +381,107 @@ class RitualSession {
     });
   }
   
+  // Atomically advance state — safe when multiple devices race simultaneously.
+  // Only the first device to call this wins; all others see the state already changed.
+  async advanceStateWithTransaction(fromState, toState) {
+    try {
+      const stateRef = this.sessionRef.child('state');
+      let didAdvance = false;
+
+      await stateRef.transaction((currentState) => {
+        if (currentState === fromState) {
+          didAdvance = true;
+          return toState;
+        }
+        return undefined; // Abort — another device already advanced
+      });
+
+      if (didAdvance) {
+        await this.sessionRef.update({ stateChangedAt: firebase.database.ServerValue.TIMESTAMP });
+        console.log(`[AUTO] ${fromState} → ${toState}`);
+      }
+
+      return didAdvance;
+    } catch (error) {
+      console.error('State transaction failed:', error);
+      return false;
+    }
+  }
+
+  // Mark that this participant's audio for a given part has finished
+  async markAudioDone(part) {
+    try {
+      await this.userRef.update({ [`${part}AudioDone`]: true });
+    } catch (error) {
+      console.error('Failed to mark audio done:', error);
+    }
+  }
+
+  // Get the timestamp of the last participant join
+  async getLastJoinTime() {
+    try {
+      const snapshot = await this.sessionRef.child('lastJoinAt').once('value');
+      return snapshot.val();
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // Write the QR code visibility flag (laptop listens to this)
+  async setQrVisible(visible) {
+    try {
+      await this.sessionRef.update({ qrVisible: visible });
+    } catch (error) {
+      console.error('Failed to set QR visibility:', error);
+    }
+  }
+
+  // Subscribe to QR visibility changes
+  onQrVisibleChange(callback) {
+    this.sessionRef.child('qrVisible').on('value', (snapshot) => {
+      callback(snapshot.val());
+    });
+  }
+
+  // Check if all connected participants have finished audio for a given part
+  async allParticipantsAudioDone(part) {
+    try {
+      const snapshot = await this.participantsRef.once('value');
+      const participants = snapshot.val() || {};
+      const connected = Object.values(participants).filter(p => p.connected);
+      if (connected.length === 0) return false;
+      return connected.every(p => p[`${part}AudioDone`] === true);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Check if all connected participants have submitted their drawing
+  async allParticipantsSacrificed() {
+    try {
+      const snapshot = await this.participantsRef.once('value');
+      const participants = snapshot.val() || {};
+      const connected = Object.values(participants).filter(p => p.connected);
+      if (connected.length === 0) return false;
+      return connected.every(p => p.isReady === true);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Check if all connected participants have submitted a question
+  async allParticipantsQuestioned() {
+    try {
+      const snapshot = await this.participantsRef.once('value');
+      const participants = snapshot.val() || {};
+      const connected = Object.values(participants).filter(p => p.connected);
+      if (connected.length === 0) return false;
+      return connected.every(p => p.hasSubmittedQuestion === true);
+    } catch (error) {
+      return false;
+    }
+  }
+
   // Clean up listeners
   cleanup() {
     this.sessionRef.off();
@@ -358,3 +491,149 @@ class RitualSession {
 
 // Export for use
 window.RitualSession = RitualSession;
+
+// ━━━ AUTO-ADVANCE MANAGER ━━━
+// Runs on every connected mobile device. Firebase transactions ensure
+// only one device actually writes each state transition.
+class AutoAdvanceManager {
+  constructor(session) {
+    this.session = session;
+    this.timers = {};
+    this.currentState = null;
+    this.part1AudioDone = false;
+    this.qrFaded = false;
+    this.app = null;
+    this.active = false; // dormant until user clicks JOIN
+  }
+
+  setApp(app) {
+    this.app = app;
+  }
+
+  activate() {
+    this.active = true;
+  }
+
+  // Called every time Firebase state changes
+  onStateChange(globalState) {
+    if (!this.active) return; // don't fire before JOIN click
+    this.clearAll();
+    this.currentState = globalState;
+
+    if (globalState === 'idle') {
+      // First device to join kicks off the ritual after a brief stabilization delay
+      this.timers['idle'] = setTimeout(async () => {
+        await this.session.advanceStateWithTransaction('idle', 'part1');
+      }, 2000);
+
+    } else if (globalState === 'part1') {
+      // Start quiesce poller — will advance to part3 when conditions are met
+      this.startQuiescePoller();
+
+    } else if (globalState === 'dismissal') {
+      this.scheduleDismissalReset();
+    }
+    // part3, part4, part5 are driven by onAudioEnded()
+  }
+
+  // Called by mobile-app when Part 1 audio track finishes on this device
+  onPart1AudioEnded() {
+    this.part1AudioDone = true;
+
+    // Show drawing canvas locally (no global state change)
+    if (this.app) {
+      this.app.showDrawingCanvas();
+    }
+
+    // Ensure quiesce poller is running
+    this.startQuiescePoller();
+  }
+
+  // Polls until: quiesce (5s no new joins) AND all drawings submitted → advance to part3
+  startQuiescePoller() {
+    if (this.timers['quiesce_poll']) return; // Already running
+
+    this.timers['quiesce_poll'] = setInterval(async () => {
+      if (this.currentState !== 'part1') {
+        clearInterval(this.timers['quiesce_poll']);
+        delete this.timers['quiesce_poll'];
+        return;
+      }
+
+      const lastJoin = await this.session.getLastJoinTime();
+      const isQuiesced = lastJoin && (Date.now() - lastJoin) > RITUAL_TIMINGS.quiesceMs;
+
+      // Fade QR on laptop once quiesce hits (one-time)
+      if (isQuiesced && !this.qrFaded) {
+        this.qrFaded = true;
+        this.session.setQrVisible(false);
+      }
+
+      // Only advance once THIS device has heard Part 1 audio (ensures drawing canvas showed)
+      if (isQuiesced && this.part1AudioDone) {
+        const allReady = await this.session.allParticipantsSacrificed();
+        if (allReady) {
+          this.clearAll();
+          await this.session.advanceStateWithTransaction('part1', 'part3');
+        }
+      }
+    }, 2000);
+  }
+
+  // Called by mobile-app when any audio track (part2–part5) finishes on this device
+  onAudioEnded(part) {
+    this.session.markAudioDone(part);
+    this.startPartPoller(part);
+  }
+
+  // Polls Firebase until all devices have finished the audio (+ questions for part4)
+  startPartPoller(part) {
+    const pollKey = `${part}_poll`;
+    if (this.timers[pollKey]) return;
+
+    const nextPart = { part3: 'part4', part4: 'part5', part5: 'dismissal' };
+
+    this.timers[pollKey] = setInterval(async () => {
+      if (this.currentState !== part) {
+        clearInterval(this.timers[pollKey]);
+        delete this.timers[pollKey];
+        return;
+      }
+
+      const allAudioDone = await this.session.allParticipantsAudioDone(part);
+      if (!allAudioDone) return;
+
+      // Part 4 also requires all questions submitted
+      if (part === 'part4') {
+        const allQuestioned = await this.session.allParticipantsQuestioned();
+        if (!allQuestioned) return;
+      }
+
+      this.clearAll();
+      const next = nextPart[part];
+      if (next) {
+        await this.session.advanceStateWithTransaction(part, next);
+      }
+    }, 2000);
+  }
+
+  // Auto-reset the ritual 10 seconds after dismissal
+  scheduleDismissalReset() {
+    this.timers['dismissal'] = setTimeout(async () => {
+      await this.session.resetRitual();
+    }, RITUAL_TIMINGS.dismissalResetMs);
+  }
+
+  // Cancel all active timers and reset local state
+  clearAll() {
+    for (const id of Object.values(this.timers)) {
+      clearTimeout(id);
+      clearInterval(id);
+    }
+    this.timers = {};
+    this.part1AudioDone = false;
+    this.qrFaded = false;
+  }
+}
+
+window.AutoAdvanceManager = AutoAdvanceManager;

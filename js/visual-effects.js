@@ -22,14 +22,15 @@ class MatrixRain {
   }
   
   resize() {
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-    
+    this.canvas.width = this.canvas.clientWidth || window.innerWidth;
+    this.canvas.height = this.canvas.clientHeight || window.innerHeight;
+
     const numColumns = Math.floor(this.canvas.width / this.fontSize);
     this.columns = Array(numColumns).fill(1);
   }
   
   start(glitchMode = false) {
+    if (this.isActive) return;
     this.isActive = true;
     this.glitchMode = glitchMode;
     this.corruptionLevel = 0;

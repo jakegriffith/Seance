@@ -23,6 +23,9 @@
           <span id="participant-count">0</span> participants
         </span>
       </div>
+      <div class="autonomous-notice">
+        Auto-advance is ACTIVE — experience runs without operator input. Buttons below override the auto-advance timers.
+      </div>
     </header>
 
     <div class="dashboard-grid">
@@ -46,7 +49,11 @@
           <button id="btn-part1-to-part2" class="state-btn" data-from="part1" data-to="part2">
             Start Part 2 (Sacrifice)
           </button>
-          
+
+          <button id="btn-part1-force-part3" class="state-btn warning-btn" data-from="part1" data-to="part3">
+            Force Summoning — skips remaining drawings
+          </button>
+
           <button id="btn-part2-to-part3" class="state-btn" data-from="part2" data-to="part3">
             Start Part 3 (Summoning)
           </button>

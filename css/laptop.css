@@ -203,6 +203,12 @@ html, body {
   /* Smoke animation continues, styling deferred */
 }
 
+/* QR code fade-out triggered by quiesce */
+#qr-code-overlay.fading-out {
+  transition: opacity 1.5s ease-out;
+  opacity: 0;
+}
+
 
 /* ━━━ RESPONSIVE ADJUSTMENTS ━━━ */
 @media (max-width: 768px) {

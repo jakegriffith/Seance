@@ -13,7 +13,7 @@ gathering → sacrifice → summoning → monologue → listening → revelation
 | `gathering` | GATHERING | Particle effects, orientation scanning |
 | `sacrifice` | SACRIFICE | Sacrifice form, particle effects |
 | `ready` | READY | Waiting for ritual to begin |
-| `summoning` | SUMMONING | Ritual animation (10s) |
+| `summoning` | SUMMONING | Ritual animation (10s) + Natural Audio |
 | `monologue` | SUMMONING | **Ritual animation continues** (participants watch laptop) |
 | `listening` | LISTENING | Question submission form |
 | `revelation` | REVELATION | **Scratch-off reveal** - "did you really think I'd tell you?" |

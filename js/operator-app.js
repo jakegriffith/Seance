@@ -59,7 +59,6 @@ class OperatorDashboard {
     this.session.onQuestionsChange((questions) => {
       this.questions = questions;
       this.updateQuestionsList(questions);
-      this.checkQuestionsCompletion(questions);
     });
   }
   
@@ -197,28 +196,6 @@ class OperatorDashboard {
         <div class="item-content">${q.text}</div>
       </div>
     `).join('');
-  }
-  
-  checkQuestionsCompletion(questions) {
-    const questionCount = Object.keys(questions).length;
-    const btn = document.getElementById('btn-listening-to-revealing');
-    
-    // Enable revealing button if at least one question has been submitted
-    if (questionCount > 0) {
-      btn.disabled = false;
-      const requirement = btn.querySelector('.btn-requirement');
-      if (requirement) {
-        requirement.textContent = `(${questionCount} questions ✓)`;
-        requirement.style.color = '#00ff88';
-      }
-    } else {
-      btn.disabled = true;
-      const requirement = btn.querySelector('.btn-requirement');
-      if (requirement) {
-        requirement.textContent = '(Waiting for questions)';
-        requirement.style.color = '#666';
-      }
-    }
   }
   
   log(message, type = 'info') {

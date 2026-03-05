@@ -34,9 +34,20 @@ body {
   padding: 24px 32px;
   margin-bottom: 24px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.autonomous-notice {
+  padding: 8px 12px;
+  background: rgba(0, 180, 80, 0.08);
+  border: 1px solid #00b450;
+  border-radius: 3px;
+  color: #007a32;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  font-weight: 500;
 }
 
 .dashboard-header h1 {
@@ -211,6 +222,17 @@ body {
 
 .state-btn.reset-btn:hover:not(:disabled) {
   background: #000000;
+  color: #ffffff;
+}
+
+.state-btn.warning-btn {
+  background: #fff8e6;
+  border-color: #c47a00;
+  color: #7a4d00;
+}
+
+.state-btn.warning-btn:hover:not(:disabled) {
+  background: #c47a00;
   color: #ffffff;
 }
 
